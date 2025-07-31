@@ -1,12 +1,14 @@
-// src/app/components/globe/globe.component.ts
 import {
   AfterViewInit,
   Component,
   ElementRef,
   OnDestroy,
   ViewChild,
+  NgZone,
 } from '@angular/core';
 import * as THREE from 'three';
+// @ts-ignore
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import ThreeGlobe from 'three-globe';
 import * as d3 from 'd3';
 import { CommonModule } from '@angular/common';
@@ -56,6 +58,12 @@ export class GlobeComponent implements AfterViewInit, OnDestroy {
   private renderer!: THREE.WebGLRenderer;
   private globe!: any;
   private animationFrameId!: number;
+  private controls!: OrbitControls;
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
+  private isMobile = window.innerWidth <= 768;
+  private isDragging = false;
+  private lastTouchDistance = 0;
 
   private countries: CountryData[] = [
     { lat: 48.3794, lng: 31.1656, intensity: 0.9, name: 'Ukraine' },
@@ -116,6 +124,8 @@ export class GlobeComponent implements AfterViewInit, OnDestroy {
     { lat: 55.7558, lng: 37.6173, text: 'MOSCOW', size: 0.8, color: '#ff9e7e' },
   ];
 
+  constructor(private ngZone: NgZone) {}
+
   ngAfterViewInit(): void {
     this.initGlobe();
     this.setupEventListeners();
@@ -132,24 +142,32 @@ export class GlobeComponent implements AfterViewInit, OnDestroy {
     // Create ThreeJS scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0a081e);
-    this.camera = new THREE.PerspectiveCamera();
-    this.camera.aspect =
+
+    // Adjust camera for mobile
+    const fov = this.isMobile ? 75 : 60;
+    this.camera = new THREE.PerspectiveCamera(
+      fov,
       this.globeContainer.nativeElement.clientWidth /
-      this.globeContainer.nativeElement.clientHeight;
-    this.camera.updateProjectionMatrix();
+        this.globeContainer.nativeElement.clientHeight,
+      0.1,
+      1000
+    );
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
       powerPreference: 'high-performance',
     });
+
+    // Set pixel ratio for mobile optimization
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.setSize(
       this.globeContainer.nativeElement.clientWidth,
       this.globeContainer.nativeElement.clientHeight
     );
     this.globeContainer.nativeElement.appendChild(this.renderer.domElement);
 
-    // Create the globe - updated initialization
+    // Create the globe
     this.globe = new ThreeGlobe()
       .globeImageUrl(
         '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg'
@@ -165,9 +183,21 @@ export class GlobeComponent implements AfterViewInit, OnDestroy {
     this.scene.add(new THREE.DirectionalLight(0xffffff, 0.3));
 
     // Position camera
-    this.camera.position.z = 300;
+    this.camera.position.z = this.isMobile ? 350 : 300;
 
-    // Add heatmap data using pointsData - updated API
+    // Add orbit controls
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.1;
+    this.controls.autoRotate = !this.isMobile;
+    this.controls.autoRotateSpeed = 0.8;
+    this.controls.enableZoom = true;
+    this.controls.minDistance = 200;
+    this.controls.maxDistance = 500;
+
+    // Add heatmap data
+    const pointResolution = this.isMobile ? 6 : 8;
+
     this.globe
       .pointsData(this.countries)
       .pointLat((d: CountryData) => d.lat)
@@ -179,22 +209,24 @@ export class GlobeComponent implements AfterViewInit, OnDestroy {
         return colorScale(d.intensity);
       })
       .pointAltitude(0.01)
-      .pointRadius((d: CountryData) => d.intensity * 0.3)
-      .pointResolution(8);
+      .pointRadius(
+        (d: CountryData) => d.intensity * (this.isMobile ? 0.2 : 0.3)
+      )
+      .pointResolution(pointResolution);
 
     // Add event points
     this.globe
       .pointsData(this.events)
       .pointColor((d: EventData) => d.color)
       .pointAltitude(0.01)
-      .pointRadius((d: EventData) => d.size)
-      .pointResolution(8);
+      .pointRadius((d: EventData) => d.size * (this.isMobile ? 0.8 : 1))
+      .pointResolution(pointResolution);
 
-    // Add labels
+    // Add labels with larger text on mobile
     this.globe
       .labelsData(this.labels)
       .labelText((d: LabelData) => d.text)
-      .labelSize((d: LabelData) => d.size)
+      .labelSize((d: LabelData) => d.size * (this.isMobile ? 1.2 : 1))
       .labelColor((d: LabelData) => d.color)
       .labelDotRadius(0.3)
       .labelDotOrientation(() => 'bottom');
@@ -204,10 +236,14 @@ export class GlobeComponent implements AfterViewInit, OnDestroy {
   }
 
   private onWindowResize = () => {
+    this.isMobile = window.innerWidth <= 768;
+
     this.camera.aspect =
       this.globeContainer.nativeElement.clientWidth /
       this.globeContainer.nativeElement.clientHeight;
+    this.camera.fov = this.isMobile ? 75 : 60;
     this.camera.updateProjectionMatrix();
+
     this.renderer.setSize(
       this.globeContainer.nativeElement.clientWidth,
       this.globeContainer.nativeElement.clientHeight
@@ -218,76 +254,135 @@ export class GlobeComponent implements AfterViewInit, OnDestroy {
     window.addEventListener('resize', this.onWindowResize);
 
     const canvas = this.renderer.domElement;
-    canvas.addEventListener('mousemove', (event: MouseEvent) => {
-      // Prevent events from propagating to parent elements
-      event.stopPropagation();
 
-      const rect = canvas.getBoundingClientRect();
-      const mouse = new THREE.Vector2(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1
-      );
+    // Mouse/Touch events
+    canvas.addEventListener('pointermove', this.onPointerMove);
+    canvas.addEventListener('pointerdown', () => (this.isDragging = false));
+    canvas.addEventListener('pointerup', () => (this.isDragging = false));
 
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(mouse, this.camera);
+    // Touch events for pinch-to-zoom
+    canvas.addEventListener('touchstart', this.handleTouchStart);
+    canvas.addEventListener('touchmove', this.handleTouchMove, {
+      passive: false,
+    });
 
-      const intersects = raycaster.intersectObject(this.globe);
-      if (intersects.length > 0) {
-        const point = intersects[0].point;
-        const latLng: GeoCoords = this.globe.toGeoCoords(point);
-
-        // Find closest country
-        let closestCountry: CountryData | null = null;
-        let minDist = Infinity;
-
-        this.countries.forEach((country) => {
-          const dist = Math.sqrt(
-            Math.pow(country.lat - latLng.lat, 2) +
-              Math.pow(country.lng - latLng.lng, 2)
-          );
-          if (dist < minDist) {
-            minDist = dist;
-            closestCountry = country;
-          }
-        });
-
-        if (closestCountry && minDist < 5) {
-          this.tooltip.nativeElement.style.opacity = '1';
-          this.tooltip.nativeElement.style.left = `${event.clientX + 15}px`;
-          this.tooltip.nativeElement.style.top = `${event.clientY + 15}px`;
-
-          // Type guard to ensure closestCountry is CountryData
-          const country = closestCountry as CountryData;
-          const intensity = country.intensity;
-          let status: string;
-          if (intensity > 0.8) status = 'CRITICAL ACTIVITY';
-          else if (intensity > 0.6) status = 'HIGH ACTIVITY';
-          else if (intensity > 0.4) status = 'MODERATE ACTIVITY';
-          else status = 'LOW ACTIVITY';
-
-          this.tooltip.nativeElement.innerHTML = `
-            <div class="tooltip-title">${country.name}</div>
-            <div class="tooltip-content">
-              <div>Status: <strong>${status}</strong></div>
-              <div>Tracking ${Math.floor(intensity * 150)} events</div>
-              <div>Last update: 15 min ago</div>
-            </div>
-          `;
-          return;
-        }
-      }
-
+    // Hide tooltip when not hovering
+    canvas.addEventListener('pointerleave', () => {
       this.tooltip.nativeElement.style.opacity = '0';
     });
-
-    // Add pointerdown event to ensure canvas captures events
-    canvas.addEventListener('pointerdown', (event: PointerEvent) => {
-      event.stopPropagation();
-    });
   }
+
+  private handleTouchStart = (event: TouchEvent) => {
+    if (event.touches.length === 2) {
+      this.lastTouchDistance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+    }
+  };
+
+  private handleTouchMove = (event: TouchEvent) => {
+    // Handle pinch-to-zoom
+    if (event.touches.length === 2) {
+      event.preventDefault();
+
+      const distance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+
+      const zoomDelta = (distance - this.lastTouchDistance) * 0.01;
+      this.camera.position.z -= zoomDelta * 10;
+      this.lastTouchDistance = distance;
+    }
+    // Handle single touch for tooltip
+    else if (event.touches.length === 1) {
+      this.onPointerMove(event);
+    }
+  };
+
+  private onPointerMove = (event: MouseEvent | TouchEvent) => {
+    event.stopPropagation();
+
+    // Skip tooltip while dragging
+    if ((event as MouseEvent).buttons === 1) {
+      this.isDragging = true;
+      this.tooltip.nativeElement.style.opacity = '0';
+      return;
+    }
+
+    if (this.isDragging) return;
+
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    let clientX, clientY;
+
+    if (event instanceof MouseEvent) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+      if (event.touches.length === 0) return;
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    }
+
+    this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.raycaster.intersectObject(this.globe);
+
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+      const latLng: GeoCoords = this.globe.toGeoCoords(point);
+
+      // Find closest country
+      let closestCountry: CountryData | null = null;
+      let minDist = Infinity;
+
+      this.countries.forEach((country) => {
+        const dist = Math.sqrt(
+          Math.pow(country.lat - latLng.lat, 2) +
+            Math.pow(country.lng - latLng.lng, 2)
+        );
+        if (dist < minDist) {
+          minDist = dist;
+          closestCountry = country;
+        }
+      });
+
+      if (closestCountry && minDist < 5) {
+        this.tooltip.nativeElement.style.opacity = '1';
+        this.tooltip.nativeElement.style.left = `${clientX + 15}px`;
+        this.tooltip.nativeElement.style.top = `${clientY + 15}px`;
+
+        const country = closestCountry as CountryData;
+        const intensity = country.intensity;
+        let status: string;
+        if (intensity > 0.8) status = 'CRITICAL ACTIVITY';
+        else if (intensity > 0.6) status = 'HIGH ACTIVITY';
+        else if (intensity > 0.4) status = 'MODERATE ACTIVITY';
+        else status = 'LOW ACTIVITY';
+
+        this.tooltip.nativeElement.innerHTML = `
+          <div class="tooltip-title">${country.name}</div>
+          <div class="tooltip-content">
+            <div>Status: <strong>${status}</strong></div>
+            <div>Tracking ${Math.floor(intensity * 150)} events</div>
+            <div>Last update: 15 min ago</div>
+          </div>
+        `;
+        return;
+      }
+    }
+
+    this.tooltip.nativeElement.style.opacity = '0';
+  };
+
   private animate() {
-    this.animationFrameId = requestAnimationFrame(() => this.animate());
-    this.globe.rotation.y += 0.001;
-    this.renderer.render(this.scene, this.camera);
+    this.ngZone.runOutsideAngular(() => {
+      this.animationFrameId = requestAnimationFrame(() => this.animate());
+      this.controls.update();
+      this.renderer.render(this.scene, this.camera);
+    });
   }
 }

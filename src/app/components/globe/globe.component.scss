@@ -5,10 +5,11 @@
   position: absolute;
   top: 0;
   left: 0;
+  touch-action: none; /* Enable custom touch handling */
 }
 
 .tooltip {
-  position: absolute;
+  position: fixed;
   background: rgba(25, 22, 56, 0.95);
   border: 1px solid rgba(100, 100, 255, 0.3);
   border-radius: 10px;
@@ -19,16 +20,32 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.3s ease;
+  
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    max-width: 250px;
+    padding: 12px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
 }
 
 .tooltip-title {
   font-weight: 600;
   margin-bottom: 8px;
   color: #7e7cff;
+  
+  @media (max-width: 768px) {
+    font-size: 16px;
+  }
 }
 
 .tooltip-content {
   font-size: 14px;
   color: #c0c0ff;
   line-height: 1.5;
+  
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
 }
