@@ -7,8 +7,7 @@ import {
   NgZone,
 } from '@angular/core';
 import * as THREE from 'three';
-// @ts-ignore
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import ThreeGlobe from 'three-globe';
 import * as d3 from 'd3';
 import { CommonModule } from '@angular/common';
