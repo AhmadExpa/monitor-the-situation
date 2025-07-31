@@ -1,0 +1,56 @@
+header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+  background: rgba(10, 8, 30, 0.7);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(100, 100, 255, 0.2);
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ff7eee, #7e7cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.logo span {
+  font-family: 'Space Mono', monospace;
+  font-size: 18px;
+  color: #ffffff;
+  // background: #3a3a8a;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+nav ul {
+  display: flex;
+  list-style: none;
+  gap: 25px;
+}
+
+nav a {
+  color: #a0a0ff;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  padding: 8px 15px;
+  border-radius: 20px;
+}
+
+nav a:hover, nav a.active {
+  background: rgba(100, 100, 255, 0.2);
+  color: #ffffff;
+}

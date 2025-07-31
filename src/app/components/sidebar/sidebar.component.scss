@@ -1,0 +1,171 @@
+/* src/app/sidebar/sidebar.component.scss */
+.sidebar {
+  background: rgba(15, 12, 41, 0.85);
+  backdrop-filter: blur(10px);
+  border-left: 1px solid rgba(100, 100, 255, 0.2);
+  padding: 20px;
+  overflow-y: auto; /* Ensure scrolling is enabled */
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  height: 100%;
+  position: relative;
+  z-index: 10; /* Ensure sidebar is above other content */
+}
+
+/* Add this to ensure panels don't shrink */
+.panel {
+  flex-shrink: 0;
+}
+
+/* Keep the rest of your styles */
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #7e7cff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-title svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.heatmap-legend {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 12px;
+}
+
+.legend-gradient {
+  height: 20px;
+  width: 100%;
+  background: linear-gradient(90deg, #00ffff, #ff00ff);
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.perspective-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+  background: rgba(40, 37, 76, 0.7);
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.tab.active {
+  background: rgba(100, 100, 255, 0.3);
+  color: #ffffff;
+}
+
+.news-item {
+  background: rgba(35, 32, 66, 0.5);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-left: 3px solid #7e7cff;
+
+  &.galaxy {
+    border-left-color: #ff7eee;
+  }
+
+  &.normie {
+    border-left-color: #5d8aff;
+  }
+}
+
+.news-source {
+  font-size: 12px;
+  color: #a0a0ff;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.news-title {
+  font-weight: 500;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.news-excerpt {
+  font-size: 13px;
+  color: #c0c0ff;
+  line-height: 1.5;
+}
+
+.chat-messages {
+  height: 200px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  background: rgba(45, 42, 76, 0.6);
+  padding: 10px 15px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  color: #a0a0ff;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 10px;
+
+  input {
+    flex: 1;
+    background: rgba(40, 37, 76, 0.7);
+    border: 1px solid rgba(100, 100, 255, 0.3);
+    border-radius: 20px;
+    padding: 12px 20px;
+    color: white;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 14px;
+  }
+
+  button {
+    background: linear-gradient(90deg, #7e7cff, #ff7eee);
+    border: none;
+    border-radius: 20px;
+    padding: 0 25px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(126, 124, 255, 0.4);
+    }
+  }
+}

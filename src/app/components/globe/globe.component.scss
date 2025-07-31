@@ -1,0 +1,34 @@
+/* src/app/globe/globe.component.scss */
+#globeViz {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.tooltip {
+  position: absolute;
+  background: rgba(25, 22, 56, 0.95);
+  border: 1px solid rgba(100, 100, 255, 0.3);
+  border-radius: 10px;
+  padding: 15px;
+  max-width: 300px;
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #7e7cff;
+}
+
+.tooltip-content {
+  font-size: 14px;
+  color: #c0c0ff;
+  line-height: 1.5;
+}
